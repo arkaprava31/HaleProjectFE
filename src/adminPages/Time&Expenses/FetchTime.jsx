@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { backendServer } from "../../utils/info";
@@ -7,6 +8,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 
 const FetchTime = ({ id }) => {
 	const token = localStorage.getItem("token");
+	const userId=localStorage.getItem("usedId");
 	const [timeData, setTimeData] = useState([]);
 	const [projects, setProjects] = useState([]);
 	const [startDate, setStartDate] = useState(dayjs().startOf("week")); // Start on the first day of the current week (Sunday)
@@ -18,18 +20,27 @@ const FetchTime = ({ id }) => {
 
 	const fetchTimeData = async () => {
 		try {
-			const response = await axios.get(`${backendServer}/api/fetch-times/${id}`, {
-				headers: { Authorization: `Bearer ${token}` },
-			});
+			const response = await axios.get(
+				`${backendServer}/api/fetch-times/${id}`,
+				{
+					headers: { Authorization: `Bearer ${token}` },
+				}
+			);
+			console.log(response.data);
+
 			const timeEntries = response.data.timeData.time;
 			const fetchedComment = response.data.timeData.comment || ""; // Fetch the comment
+			console.log(fetchedComment);
+
 			setTimeData(timeEntries);
 			setComment(fetchedComment);
 
 			const uniqueProjects = [];
 			timeEntries.forEach((entry) => {
 				entry.projects.forEach((project) => {
-					if (!uniqueProjects.find((p) => p.projectCode === project.projectCode)) {
+					if (
+						!uniqueProjects.find((p) => p.projectCode === project.projectCode)
+					) {
 						uniqueProjects.push(project);
 					}
 				});
@@ -45,6 +56,7 @@ const FetchTime = ({ id }) => {
 
 	useEffect(() => {
 		fetchTimeData();
+		console.log("comment", comment);
 	}, [startDate]);
 
 	const handleNextPage = () => {
@@ -71,7 +83,9 @@ const FetchTime = ({ id }) => {
 		});
 
 		if (projectEntry) {
-			const project = projectEntry.projects.find((p) => p.projectCode === projectCode);
+			const project = projectEntry.projects.find(
+				(p) => p.projectCode === projectCode
+			);
 			return project ? project.hours : 0;
 		}
 		return 0;
@@ -89,11 +103,10 @@ const FetchTime = ({ id }) => {
 
 	const handleUpdate = async () => {
 		try {
-			await axios.put(
-				`${backendServer}/api/update-times/${id}`,
-				{ timeData, comment },
-				{ headers: { Authorization: `Bearer ${token}` } }
-			);
+			await axios.put(`${backendServer}/api/times/${id}`, {
+				timeData,
+				comment,
+			});
 			setEditMode(false); // Exit edit mode after saving
 			alert("Data updated successfully");
 		} catch (error) {
@@ -123,7 +136,10 @@ const FetchTime = ({ id }) => {
 			<div className="w-full flex items-center justify-end gap-4">
 				{/* Navigation Controls */}
 				<div className="flex gap-2">
-					<button onClick={handlePrevPage} className="cursor-pointer text-[#7F55DE]">
+					<button
+						onClick={handlePrevPage}
+						className="cursor-pointer text-[#7F55DE]"
+					>
 						<GrLinkPrevious />
 					</button>
 					<button
@@ -132,7 +148,10 @@ const FetchTime = ({ id }) => {
 					>
 						Today
 					</button>
-					<button onClick={handleNextPage} className="cursor-pointer text-[#7F55DE]">
+					<button
+						onClick={handleNextPage}
+						className="cursor-pointer text-[#7F55DE]"
+					>
 						<GrLinkNext />
 					</button>
 				</div>
@@ -153,7 +172,11 @@ const FetchTime = ({ id }) => {
 						{getDisplayedDates().map((date) => (
 							<th
 								key={date}
-								className={`border px-4 py-2 ${date.isSame(dayjs(), "day") ? "text-[#7F55DE] font-semibold" : ""}`}
+								className={`border px-4 py-2 ${
+									date.isSame(dayjs(), "day")
+										? "text-[#7F55DE] font-semibold"
+										: ""
+								}`}
 							>
 								{date.format("DD MMM")}
 							</th>
@@ -170,20 +193,22 @@ const FetchTime = ({ id }) => {
 									{editMode ? (
 										<input
 											type="number"
-											value={getHoursForProjectOnDate(project.projectCode, date)}
+											value={getHoursForProjectOnDate(
+												project.projectCode,
+												date
+											)}
 											className="w-12 text-center"
 											onChange={(e) =>
 												setTimeData((prevData) =>
 													prevData.map((entry) =>
 														dayjs(entry.date).isSame(date, "day")
 															? {
-																...entry,
-																projects: entry.projects.map((p) =>
-																	p.projectCode === project.projectCode
-																		? { ...p, hours: Number(e.target.value) }
-																		: p
-																),
-															}
+																	...entry,
+																	projects: entry.projects.map((p) => ({
+																		...p,
+																		hours: Number(e.target.value), // Set the same value for all projects
+																	})),
+															  }
 															: entry
 													)
 												)
@@ -196,7 +221,8 @@ const FetchTime = ({ id }) => {
 							))}
 							<td className="border px-4 py-2">
 								{getDisplayedDates().reduce(
-									(total, date) => total + getHoursForProjectOnDate(project.projectCode, date),
+									(total, date) =>
+										total + getHoursForProjectOnDate(project.projectCode, date),
 									0
 								)}
 							</td>
@@ -205,17 +231,21 @@ const FetchTime = ({ id }) => {
 
 					{/* Total Hours Row */}
 					<tr>
-						<td className="border px-4 py-2 font-bold text-nowrap">Total Hours</td>
+						<td className="border px-4 py-2 font-bold text-nowrap">
+							Total Hours
+						</td>
 						{getDisplayedDates().map((date) => (
 							<td key={date} className="border px-4 py-2 bg-gray-100">
 								{calculateTotalHours(date)}
 							</td>
 						))}
 						<td className="border px-4 py-2 bg-gray-100">
-							{getDisplayedDates().reduce((total, date) => total + calculateTotalHours(date), 0)}
+							{getDisplayedDates().reduce(
+								(total, date) => total + calculateTotalHours(date),
+								0
+							)}
 						</td>
 					</tr>
-
 
 					{/* Work Schedule Row */}
 					<tr>
@@ -225,7 +255,9 @@ const FetchTime = ({ id }) => {
 								{workSchedule}
 							</td>
 						))}
-						<td className="border px-4 py-2">{workSchedule * getDisplayedDates().length}</td>
+						<td className="border px-4 py-2">
+							{workSchedule * getDisplayedDates().length}
+						</td>
 					</tr>
 
 					{/* Overtime Row */}
@@ -238,7 +270,8 @@ const FetchTime = ({ id }) => {
 						))}
 						<td className="border px-4 py-2">
 							{getDisplayedDates().reduce(
-								(total, date) => total + calculateOvertime(calculateTotalHours(date)),
+								(total, date) =>
+									total + calculateOvertime(calculateTotalHours(date)),
 								0
 							)}
 						</td>
@@ -256,8 +289,10 @@ const FetchTime = ({ id }) => {
 						value={comment}
 						onChange={(e) => setComment(e.target.value)}
 					/>
-				) : (
+				) : comment ? (
 					<p>{comment}</p>
+				) : (
+					<p className="italic">No Comments Available</p>
 				)}
 			</div>
 		</div>
