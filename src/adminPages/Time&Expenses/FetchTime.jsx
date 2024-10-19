@@ -191,32 +191,54 @@ const FetchTime = ({ id }) => {
 							{getDisplayedDates().map((date) => (
 								<td key={date} className="border px-4 py-2">
 									{editMode ? (
-										<input
-											type="number"
-											value={getHoursForProjectOnDate(
-												project.projectCode,
-												date
-											)}
-											className="w-12 text-center"
-											onChange={(e) =>
-												setTimeData((prevData) =>
-													prevData.map((entry) =>
-														dayjs(entry.date).isSame(date, "day")
-															? {
-																	...entry,
-																	projects: entry.projects.map((p) => ({
-																		...p,
-																		hours: Number(e.target.value), // Set the same value for all projects
-																	})),
-															  }
-															: entry
-													)
-												)
-											}
-										/>
-									) : (
-										getHoursForProjectOnDate(project.projectCode, date)
-									)}
+	<input
+		type="number"
+		value={getHoursForProjectOnDate(project.projectCode, date) || 0} // Ensure a value of 0 if no data
+		className="w-12 text-center"
+		onChange={(e) => {
+			const updatedHours = Number(e.target.value);
+			
+			setTimeData((prevData) => {
+				// Check if there is an entry for the current date
+				const existingEntry = prevData.find((entry) =>
+					dayjs(entry.date).isSame(date, "day")
+				);
+
+				if (existingEntry) {
+					// If an entry exists for this date, update the hours for the specific project
+					return prevData.map((entry) =>
+						dayjs(entry.date).isSame(date, "day")
+							? {
+									...entry,
+									projects: entry.projects.map((p) =>
+										p.projectCode === project.projectCode
+											? { ...p, hours: updatedHours }
+											: p
+									),
+							  }
+							: entry
+					);
+				} else {
+					// If no entry exists for this date, create a new one
+					return [
+						...prevData,
+						{
+							date: date.toISOString(), // New entry for this date
+							projects: projects.map((p) =>
+								p.projectCode === project.projectCode
+									? { ...p, hours: updatedHours } // Update hours for the current project
+									: { ...p, hours: 0 } // Set hours to 0 for other projects on this date
+							),
+						},
+					];
+				}
+			});
+		}}
+	/>
+) : (
+	getHoursForProjectOnDate(project.projectCode, date) || 0
+)}
+
 								</td>
 							))}
 							<td className="border px-4 py-2">
